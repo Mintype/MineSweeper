@@ -136,31 +136,31 @@ int main()
     window.setFramerateLimit(30);
 
     // Load sprites
-    const sf::Texture startTileTexture("start_tile.png");
+    const sf::Texture startTileTexture("resources/images/start_tile.png");
     sf::Sprite startTileSprite(startTileTexture);
 
-    const sf::Texture emptyTileTexture("empty_tile.png");
+    const sf::Texture emptyTileTexture("resources/images/empty_tile.png");
     sf::Sprite emptyTileSprite(emptyTileTexture);
 
-    const sf::Texture flagTileTexture("flag_tile.png");
+    const sf::Texture flagTileTexture("resources/images/flag_tile.png");
     sf::Sprite flagTileSprite(flagTileTexture);
 
-    const sf::Texture bombTileTexture("bomb_tile.png");
+    const sf::Texture bombTileTexture("resources/images/bomb_tile.png");
     sf::Sprite bombTileSprite(bombTileTexture);
 
-    const sf::Texture activeBombTileTexture("active_bomb_tile.png");
+    const sf::Texture activeBombTileTexture("resources/images/active_bomb_tile.png");
     sf::Sprite activeBombTileSprite(activeBombTileTexture);
 
-    const sf::Texture oneTileTexture("one_tile.png");
+    const sf::Texture oneTileTexture("resources/images/one_tile.png");
     sf::Sprite oneTileSprite(oneTileTexture);
 
-    const sf::Texture twoTileTexture("two_tile.png");
+    const sf::Texture twoTileTexture("resources/images/two_tile.png");
     sf::Sprite twoTileSprite(twoTileTexture);
 
-    const sf::Texture threeTileTexture("three_tile.png");
+    const sf::Texture threeTileTexture("resources/images/three_tile.png");
     sf::Sprite threeTileSprite(threeTileTexture);
 
-    const sf::Texture fourTileTexture("four_tile.png");
+    const sf::Texture fourTileTexture("resources/images/four_tile.png");
     sf::Sprite fourTileSprite(fourTileTexture);
 
     // Set up the grid size (8x8)
