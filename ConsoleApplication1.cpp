@@ -6,97 +6,119 @@
 #include <ctime>
 #include <iostream>
 
+enum TileState {
+    FLAG = -6,
+    BOMB_WITH_FLAG = -5,
+    ACTIVE_BOMB = -4,
+    BOMB = -3,
+    EMPTY = 0,
+    START = -1
+};
+
+int countBombs(std::vector<std::vector<int>>& tileState, int gridWidth, int gridHeight, int gridX, int gridY) {
+    int bombCount = 0;
+    for (int dx = -1; dx <= 1; ++dx) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            int neighborX = gridX + dx;
+            int neighborY = gridY + dy;
+            if (neighborX >= 0 && neighborX < gridWidth && neighborY >= 0 && neighborY < gridHeight) {
+                if (tileState[neighborX][neighborY] == BOMB || tileState[neighborX][neighborY] == BOMB_WITH_FLAG) {
+                    ++bombCount;
+                }
+            }
+        }
+    }
+    return bombCount;
+}
+
 // Function to randomly place bombs
 void placeBombs(std::vector<std::vector<int>>& tileState, int gridWidth, int gridHeight, int numBombs, int gridX, int gridY) {
     int placedBombs = 0;
     while (placedBombs < numBombs) {
         int x = rand() % gridWidth;
         int y = rand() % gridHeight;
-        // 0 = start tile, 1 = empty tile, 2 = flag tile, -1 = bomb tile, -2 = active bomb tile*
-        // 3 = bomb tile with a flag
-        // -6 = flag tile, -5 = bomb with flag, -4 = active bomb tile, -3 = bomb tile, -2 = bomb tile, -1 = start tile, 0 = empty tile
-        // Ensure no bomb is placed on a tile that already has one
-        if (tileState[x][y] == -1) {  // -1 means it's a start tile
-            tileState[x][y] = -3;  // -3 will represent a bomb
+
+        // Ensure the bomb is not placed on the start tile, the tile at gridX, gridY, or its surrounding 8 tiles
+        bool isValidPlacement = true;
+        if (x >= gridX - 1 && x <= gridX + 1 && y >= gridY - 1 && y <= gridY + 1) {
+            isValidPlacement = false;
+        }
+
+        if (isValidPlacement) {
+            tileState[x][y] = BOMB;  // -3 will represent a bomb
             std::cout << x << ", " << y << "\n";
             ++placedBombs;
         }
     }
 
-    int bombCount = 0;
-    for (int dx = -1; dx <= 1; ++dx) {
-        for (int dy = -1; dy <= 1; ++dy) {
-            int neighborX = gridX + dx;
-            int neighborY = gridY + dy;
-            if (neighborX >= 0 && neighborX < gridWidth && neighborY >= 0 && neighborY < gridHeight) {
-                if (tileState[neighborX][neighborY] == -3 || tileState[neighborX][neighborY] == -5) {
-                    ++bombCount;
-                }
-            }
+    tileState[gridX][gridY] = countBombs(tileState, gridWidth, gridHeight, gridX, gridY);
+}
+// -6 = flag tile, -5 = bomb with flag, -4 = active bomb tile, -3 = bomb tile, -2 = bomb tile, -1 = start tile, 0 = empty tile
+// Function to start the opening algorithm
+
+void runOpeningAlgorithm(std::vector<std::vector<int>>& tileState,
+    std::vector<std::vector<bool>>& revealed,
+    int gridX, int gridY,
+    int gridWidth, int gridHeight,
+    int orgX, int orgY) {
+    // Debug: Initial position and state
+    std::cout << "Running at (" << gridX << ", " << gridY << ")\n";
+
+    // Check for out-of-bounds or already revealed tiles or flagged tiles
+    if (gridX < 0 || gridX >= gridWidth || gridY < 0 || gridY >= gridHeight) {
+        std::cout << "Out of bounds\n";
+        return;
+    }
+
+    if (revealed[gridX][gridY]) {
+        if (gridX != orgX && gridY != orgY) {
+            std::cout << "Tile already revealed\n";
+            return;
         }
     }
-    tileState[gridX][gridY] = bombCount;
-}
 
-// Function to start the opening algorithm
-void runOpeningAlgorithm(std::vector<std::vector<int>>& tileState, int gridX, int gridY, int gridWidth, int gridHeight) {
-    // Debugging output
-    std::cout << "Checking tile at (" << gridX << ", " << gridY << ")\n";
-
-    // Check if the coordinates are within the bounds of the grid
-    if (gridX < 0 || gridX >= gridWidth || gridY < 0 || gridY >= gridHeight) {
-        std::cout << "Out of bounds: " << gridX << ", " << gridY << "\n";
-        return; // Out of bounds, return early
-    }
-
-    // If the tile is already revealed (or flagged), return
-    if (tileState[gridX][gridY] >= 0) {
-        std::cout << "Already revealed or flagged: " << tileState[gridX][gridY] << "\n";
-        return; // Already revealed or flagged, return early
-    }
-
-    // If it's a bomb tile (-3) or a flagged bomb tile (-5), do not open
-    if (tileState[gridX][gridY] == -3 || tileState[gridX][gridY] == -5) {
-        std::cout << "Hit a bomb or flagged tile: " << tileState[gridX][gridY] << "\n";
-        return; // It's a bomb, return early
+    if (tileState[gridX][gridY] == FLAG) {
+        std::cout << "Tile is flagged\n";
+        return;
     }
 
     // Count the neighboring bombs
-    int bombCount = 0;
-    for (int dx = -1; dx <= 1; ++dx) {
-        for (int dy = -1; dy <= 1; ++dy) {
-            // Skip the center tile (dx, dy == 0, 0)
-            if (dx == 0 && dy == 0) continue;
+    int bombCount = countBombs(tileState, gridWidth, gridHeight, gridX, gridY);
 
-            int neighborX = gridX + dx;
-            int neighborY = gridY + dy;
-            if (neighborX >= 0 && neighborX < gridWidth && neighborY >= 0 && neighborY < gridHeight) {
-                if (tileState[neighborX][neighborY] == -3 || tileState[neighborX][neighborY] == -5) {
-                    ++bombCount;
-                }
+    std::cout << "Bomb count at (" << gridX << ", " << gridY << "): " << bombCount << "\n";
+
+    // Set the tile's state to the bomb count
+    tileState[gridX][gridY] = bombCount;
+
+    // Mark tile as revealed
+    revealed[gridX][gridY] = true;
+    std::cout << "Revealed tile (" << gridX << ", " << gridY << ")\n";
+
+    // If no bombs around, recursively open neighbors
+    if (bombCount == 0) {
+        std::cout << "No bombs around, opening neighbors...\n";
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                if (dx == 0 && dy == 0) continue;  // Skip the current tile
+
+                int neighborX = gridX + dx;
+                int neighborY = gridY + dy;
+
+                // Check if the neighbor is out of bounds or already revealed
+                if (neighborX < 0 || neighborX >= gridWidth || neighborY < 0 || neighborY >= gridHeight || revealed[neighborX][neighborY])
+                    continue;
+
+                std::cout << "Recursively opening neighbor (" << neighborX << ", " << neighborY << ")\n";
+                runOpeningAlgorithm(tileState, revealed, neighborX, neighborY, gridWidth, gridHeight, orgX, orgY);
             }
         }
     }
-
-    // Set the tile's state to the bomb count (or 0 if no bombs around)
-    tileState[gridX][gridY] = bombCount;
-    std::cout << "Set tile (" << gridX << ", " << gridY << ") to " << bombCount << "\n";
-
-    // If there are no bombs around, recursively open neighboring tiles
-    if (bombCount == 0) {
-        std::cout << "No bombs around, opening neighbors...\n";
-
-        // 8 directions: top-left, top, top-right, left, right, bottom-left, bottom, bottom-right
-        runOpeningAlgorithm(tileState, gridX - 1, gridY - 1, gridWidth, gridHeight); // top-left
-        runOpeningAlgorithm(tileState, gridX, gridY - 1, gridWidth, gridHeight);     // top
-        runOpeningAlgorithm(tileState, gridX + 1, gridY - 1, gridWidth, gridHeight); // top-right
-        runOpeningAlgorithm(tileState, gridX - 1, gridY, gridWidth, gridHeight);     // left
-        runOpeningAlgorithm(tileState, gridX + 1, gridY, gridWidth, gridHeight);     // right
-        runOpeningAlgorithm(tileState, gridX - 1, gridY + 1, gridWidth, gridHeight); // bottom-left
-        runOpeningAlgorithm(tileState, gridX, gridY + 1, gridWidth, gridHeight);     // bottom
-        runOpeningAlgorithm(tileState, gridX + 1, gridY + 1, gridWidth, gridHeight); // bottom-right
+    else {
+        std::cout << "Bomb count > 0, no recursion needed.\n";
     }
+
 }
+
 
 
 
@@ -149,11 +171,9 @@ int main()
     bool gameOver = false;
 
     //2D vector to store the current state of each tile
-    // 0 = start tile, 1 = empty tile, 2 = flag tile, -1 = bomb tile, -2 = active bomb tile*
-    // 3 = bomb tile with a flag
-    // *Active bomb tile = the bomb you clicked on!
     // -6 = flag tile, -5 = bomb with flag, -4 = active bomb tile, -3 = bomb tile, -2 = bomb tile, -1 = start tile, 0 = empty tile
     std::vector<std::vector<int>> tileState(gridWidth, std::vector<int>(gridHeight, -1));
+    std::vector<std::vector<bool>> tileRevealed(gridWidth, std::vector<bool>(gridHeight, false));
 
     // Flag to indicate if the bombs have been placed
     bool bombsPlaced = false;
@@ -186,36 +206,28 @@ int main()
 
 
                         // If the tile is a bomb, show the bomb
-                        if (tileState[gridX][gridY] == -3) {
-                            tileState[gridX][gridY] = -4;
+                        if (tileState[gridX][gridY] == BOMB) {
+                            tileState[gridX][gridY] = ACTIVE_BOMB;
+                            tileRevealed[gridX][gridY] = true;
                             gameOver = true; // end game
                         }
-                        else if (tileState[gridX][gridY] == -1) { // if its a starting tile
+                        else if (tileState[gridX][gridY] == START) { // if its a starting tile
                             if (!bombsPlaced) {
-                                tileState[gridX][gridY] = 0;
+                                tileState[gridX][gridY] = EMPTY;
+                                tileRevealed[gridX][gridY] = true;
                                 placeBombs(tileState, gridWidth, gridHeight, 10, gridX, gridY); // 10 bombs
                                 bombsPlaced = true;
 
                                 // Run opening algorithm
-                                runOpeningAlgorithm(tileState, gridX, gridY, gridWidth, gridHeight);
+                                runOpeningAlgorithm(tileState, tileRevealed, gridX, gridY, gridWidth, gridHeight, gridX, gridY);
 
                             }
                             else {
                                 //tileState[gridX][gridY] = 0; // Reveal an empty tile
-                                int bombCount = 0;
-                                for (int dx = -1; dx <= 1; ++dx) {
-                                    for (int dy = -1; dy <= 1; ++dy) {
-                                        int neighborX = gridX + dx;
-                                        int neighborY = gridY + dy;
-                                        if (neighborX >= 0 && neighborX < gridWidth && neighborY >= 0 && neighborY < gridHeight) {
-                                            if (tileState[neighborX][neighborY] == -3 || tileState[neighborX][neighborY] == -5) {
-                                                ++bombCount;
-                                            }
-                                        }
-                                    }
-                                }
+                                int bombCount = countBombs(tileState, gridWidth, gridHeight, gridX, gridY);
                                 std::cout << "bro waht " << bombCount << "\n";
                                 tileState[gridX][gridY] = bombCount;
+                                tileRevealed[gridX][gridY] = true;
                             }
                         }
                     }
@@ -227,24 +239,29 @@ int main()
                     // Convert mouse position to grid coordinates
                     int gridX = mousePos.x / tileSize;
                     int gridY = mousePos.y / tileSize;
-                    // 0 = start tile, 1 = empty tile, 2 = flag tile, -1 = bomb tile, -2 = active bomb tile*
-                    // 3 = bomb tile with a flag
                     // -6 = flag tile, -5 = bomb with flag, -4 = active bomb tile, -3 = bomb tile, -2 = bomb tile, -1 = start tile, 0 = empty tile
                     // Check if coordinates are within bounds
                     if (gridX >= 0 && gridX < gridWidth && gridY >= 0 && gridY < gridHeight && !gameOver)
                     {
-                        if (tileState[gridX][gridY] == -1)
-                            tileState[gridX][gridY] = -6;
-                        else if (tileState[gridX][gridY] == -6)
-                            tileState[gridX][gridY] = -1;
-                        else if (tileState[gridX][gridY] == -3)
-                            tileState[gridX][gridY] = -5;
-                        else if (tileState[gridX][gridY] == -5)
-                            tileState[gridX][gridY] = -3;
+                        if (tileState[gridX][gridY] == START)
+                            tileState[gridX][gridY] = FLAG;
+                        else if (tileState[gridX][gridY] == FLAG)
+                            tileState[gridX][gridY] = START;
+                        else if (tileState[gridX][gridY] == BOMB)
+                            tileState[gridX][gridY] = BOMB_WITH_FLAG;
+                        else if (tileState[gridX][gridY] == BOMB_WITH_FLAG)
+                            tileState[gridX][gridY] = BOMB;
                     }
                 }
             }
         }
+
+        //    FLAG = -6,
+        //    BOMB_WITH_FLAG = -5,
+        //    ACTIVE_BOMB = -4,
+        //    BOMB = -3,
+        //    EMPTY = 0,
+        //    START = -1
 
         window.clear();
 
@@ -254,21 +271,21 @@ int main()
             for (int j = 0; j < gridHeight; ++j)
             {
                 // Position each sprite in the grid
-                if (tileState[i][j] == -1)  // start tile
+                if (tileState[i][j] == START)  // start tile
                     startTileSprite.setPosition({ i * tileSize, j * tileSize });
-                else if (tileState[i][j] == 0)  // empty tile
+                else if (tileState[i][j] == EMPTY)  // empty tile
                     emptyTileSprite.setPosition({ i * tileSize, j * tileSize });
-                else if (tileState[i][j] == -6)  // flag tile
+                else if (tileState[i][j] == FLAG)  // flag tile
                     flagTileSprite.setPosition({ i * tileSize, j * tileSize });
-                else if (tileState[i][j] == -5)  // flagged bomb tile
+                else if (tileState[i][j] == BOMB_WITH_FLAG)  // flagged bomb tile
                     flagTileSprite.setPosition({ i * tileSize, j * tileSize });
-                else if (tileState[i][j] == -3) {  // bomb tile
+                else if (tileState[i][j] == BOMB) {  // bomb tile
                     if (gameOver)
                         bombTileSprite.setPosition({ i * tileSize, j * tileSize });
                     else
                         startTileSprite.setPosition({ i * tileSize, j * tileSize });
                 }
-                else if (tileState[i][j] == -4) // active bomb tile
+                else if (tileState[i][j] == ACTIVE_BOMB) // active bomb tile
                     activeBombTileSprite.setPosition({ i * tileSize, j * tileSize });
                 else if (tileState[i][j] == 1) // 1 bomb near
                     oneTileSprite.setPosition({ i * tileSize, j * tileSize });
@@ -279,25 +296,30 @@ int main()
                 else if (tileState[i][j] == 4) // 4 bomb near
                     fourTileSprite.setPosition({ i * tileSize, j * tileSize });
 
-
+                //    FLAG = -6,
+                //    BOMB_WITH_FLAG = -5,
+                //    ACTIVE_BOMB = -4,
+                //    BOMB = -3,
+                //    EMPTY = 0,
+                //    START = -1
 
                 // Check if coordinates are within bounds
                 // Draw the appropriate tile
-                if (tileState[i][j] == -1)  // start tile
+                if (tileState[i][j] == START)  // start tile
                     window.draw(startTileSprite);
-                else if (tileState[i][j] == 0)  // empty tile
+                else if (tileState[i][j] == EMPTY)  // empty tile
                     window.draw(emptyTileSprite);
-                else if (tileState[i][j] == -6)  // flag tile
+                else if (tileState[i][j] == FLAG)  // flag tile
                     window.draw(flagTileSprite);
-                else if (tileState[i][j] == -5)  // flagged bomb tile
+                else if (tileState[i][j] == BOMB_WITH_FLAG)  // flagged bomb tile
                     window.draw(flagTileSprite);
-                else if (tileState[i][j] == -3) {  // bomb tile
+                else if (tileState[i][j] == BOMB) {  // bomb tile
                     if(gameOver)
                         window.draw(bombTileSprite);
                     else
                         window.draw(startTileSprite);
                 }
-                else if (tileState[i][j] == -4) // active bomb tile
+                else if (tileState[i][j] == ACTIVE_BOMB) // active bomb tile
                     window.draw(activeBombTileSprite);
                 else if (tileState[i][j] == 1) // 1 bomb near tile
                     window.draw(oneTileSprite);
