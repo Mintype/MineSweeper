@@ -43,10 +43,12 @@ void placeBombs(std::vector<std::vector<int>>& tileState, int gridWidth, int gri
         if (x >= gridX - 1 && x <= gridX + 1 && y >= gridY - 1 && y <= gridY + 1) {
             isValidPlacement = false;
         }
+        if (tileState[x][y] == BOMB)
+            isValidPlacement = false;
 
         if (isValidPlacement) {
             tileState[x][y] = BOMB;  // -3 will represent a bomb
-            std::cout << x << ", " << y << "\n";
+            //std::cout << x << ", " << y << "\n";
             ++placedBombs;
         }
     }
@@ -60,43 +62,44 @@ void runOpeningAlgorithm(std::vector<std::vector<int>>& tileState,
     std::vector<std::vector<bool>>& revealed,
     int gridX, int gridY,
     int gridWidth, int gridHeight,
-    int orgX, int orgY) {
+    int orgX, int orgY, int& tilesLeft) {
     // Debug: Initial position and state
-    std::cout << "Running at (" << gridX << ", " << gridY << ")\n";
+    //std::cout << "Running at (" << gridX << ", " << gridY << ")\n";
 
     // Check for out-of-bounds or already revealed tiles or flagged tiles
     if (gridX < 0 || gridX >= gridWidth || gridY < 0 || gridY >= gridHeight) {
-        std::cout << "Out of bounds\n";
+        //std::cout << "Out of bounds\n";
         return;
     }
 
     if (revealed[gridX][gridY]) {
         if (gridX != orgX && gridY != orgY) {
-            std::cout << "Tile already revealed\n";
+            //std::cout << "Tile already revealed\n";
             return;
         }
     }
 
     if (tileState[gridX][gridY] == FLAG) {
-        std::cout << "Tile is flagged\n";
+        //std::cout << "Tile is flagged\n";
         return;
     }
 
     // Count the neighboring bombs
     int bombCount = countBombs(tileState, gridWidth, gridHeight, gridX, gridY);
 
-    std::cout << "Bomb count at (" << gridX << ", " << gridY << "): " << bombCount << "\n";
+    //std::cout << "Bomb count at (" << gridX << ", " << gridY << "): " << bombCount << "\n";
 
     // Set the tile's state to the bomb count
     tileState[gridX][gridY] = bombCount;
 
     // Mark tile as revealed
     revealed[gridX][gridY] = true;
-    std::cout << "Revealed tile (" << gridX << ", " << gridY << ")\n";
+    --tilesLeft;
+    //std::cout << "Revealed tile (" << gridX << ", " << gridY << ")\n";
 
     // If no bombs around, recursively open neighbors
     if (bombCount == 0) {
-        std::cout << "No bombs around, opening neighbors...\n";
+        //std::cout << "No bombs around, opening neighbors...\n";
         for (int dx = -1; dx <= 1; ++dx) {
             for (int dy = -1; dy <= 1; ++dy) {
                 if (dx == 0 && dy == 0) continue;  // Skip the current tile
@@ -108,13 +111,13 @@ void runOpeningAlgorithm(std::vector<std::vector<int>>& tileState,
                 if (neighborX < 0 || neighborX >= gridWidth || neighborY < 0 || neighborY >= gridHeight || revealed[neighborX][neighborY])
                     continue;
 
-                std::cout << "Recursively opening neighbor (" << neighborX << ", " << neighborY << ")\n";
-                runOpeningAlgorithm(tileState, revealed, neighborX, neighborY, gridWidth, gridHeight, orgX, orgY);
+                //std::cout << "Recursively opening neighbor (" << neighborX << ", " << neighborY << ")\n";
+                runOpeningAlgorithm(tileState, revealed, neighborX, neighborY, gridWidth, gridHeight, orgX, orgY, tilesLeft);
             }
         }
     }
     else {
-        std::cout << "Bomb count > 0, no recursion needed.\n";
+        //std::cout << "Bomb count > 0, no recursion needed.\n";
     }
 
 }
@@ -163,12 +166,27 @@ int main()
     const sf::Texture fourTileTexture("resources/images/four_tile.png");
     sf::Sprite fourTileSprite(fourTileTexture);
 
+    //***
+
+    const sf::Texture resetButtonTexture("resources/images/reset_button.png"); // 48px x 48px
+    const sf::Texture resetButtonClickedTexture("resources/images/reset_button_clicked.png"); // 48px x 48px
+    sf::Sprite resetButtonSprite(resetButtonTexture);
+    // Center the reset button in the window
+    resetButtonSprite.setPosition({ 176, 25 });
+
+
+    //***
+
     // Set up the grid size (8x8)
     const int gridWidth = 8;
     const int gridHeight = 8;
     const float tileSize = 32.0f;  // Size of each tile in pixels
 
     bool gameOver = false;
+    int numberOfBombs = 10;
+    int tilesLeft = gridWidth * gridHeight;
+    const float horizontalOffset = (window.getSize().x - gridWidth * tileSize) / 2.0f;  // Center horizontally
+    const float verticalOffset = 100.0f; // Space from the top for buttons
 
     //2D vector to store the current state of each tile
     // -6 = flag tile, -5 = bomb with flag, -4 = active bomb tile, -3 = bomb tile, -2 = bomb tile, -1 = start tile, 0 = empty tile
@@ -184,6 +202,22 @@ int main()
         // Process events
         while (const std::optional event = window.pollEvent())
         {
+            //std::cout << tilesLeft << "\n";
+
+            if (tilesLeft == numberOfBombs) {
+                // Check the tileState vector and count for BOMB_WITH_FLAG (which is -5)
+                int flaggedBombs = 0;
+                for (int i = 0; i < gridWidth; ++i)
+                    for (int j = 0; j < gridHeight; ++j)
+                        if (tileState[i][j] == BOMB_WITH_FLAG)
+                            ++flaggedBombs;
+
+                // If the number of flagged bombs equals the total number of bombs, the game is won
+                if (flaggedBombs == numberOfBombs)
+                    gameOver = true;  // End the game
+            }
+
+
             // Close window: exit
             if (event->is<sf::Event::Closed>())
                 window.close();
@@ -196,9 +230,32 @@ int main()
                     // Get the mouse position relative to the window
                     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
-                    // Convert mouse position to grid coordinates
-                    int gridX = mousePos.x / tileSize;
-                    int gridY = mousePos.y / tileSize;
+                    // Adjust the mouse position by subtracting the offsets
+                    int adjustedX = mousePos.x - horizontalOffset;
+                    int adjustedY = mousePos.y - verticalOffset;
+
+                    // Convert adjusted mouse position to grid coordinates
+                    int gridX = adjustedX / tileSize;
+                    int gridY = adjustedY / tileSize;
+
+                    // Get the button's global bounds
+                    sf::FloatRect buttonBounds = resetButtonSprite.getGlobalBounds();
+
+                    // Check if the mouse click is within the button bounds
+                    sf::Vector2 mouseCords((static_cast<float> (mousePos.x)), (static_cast<float> (mousePos.y)));
+                    if (buttonBounds.contains(mouseCords))
+                    {
+                        // Mouse clicked on the reset button, change the texture to the clicked version
+                        //resetButtonSprite.setTexture(resetButtonClickedTexture);
+
+                        tileState = std::vector<std::vector<int>>(gridWidth, std::vector<int>(gridHeight, -1));
+                        tileRevealed = std::vector<std::vector<bool>>(gridWidth, std::vector<bool>(gridHeight, false));
+
+                        bombsPlaced = false;
+                        tilesLeft = gridX * gridY;
+                        gameOver = false;
+
+                    }
 
                     // Check if coordinates are within bounds
                     if (gridX >= 0 && gridX < gridWidth && gridY >= 0 && gridY < gridHeight && !gameOver)
@@ -215,19 +272,20 @@ int main()
                             if (!bombsPlaced) {
                                 tileState[gridX][gridY] = EMPTY;
                                 tileRevealed[gridX][gridY] = true;
-                                placeBombs(tileState, gridWidth, gridHeight, 10, gridX, gridY); // 10 bombs
+                                //--tilesLeft;
+                                placeBombs(tileState, gridWidth, gridHeight, numberOfBombs, gridX, gridY); // 10 bombs
                                 bombsPlaced = true;
 
                                 // Run opening algorithm
-                                runOpeningAlgorithm(tileState, tileRevealed, gridX, gridY, gridWidth, gridHeight, gridX, gridY);
+                                runOpeningAlgorithm(tileState, tileRevealed, gridX, gridY, gridWidth, gridHeight, gridX, gridY, tilesLeft);
 
                             }
                             else {
                                 //tileState[gridX][gridY] = 0; // Reveal an empty tile
                                 int bombCount = countBombs(tileState, gridWidth, gridHeight, gridX, gridY);
-                                std::cout << "bro waht " << bombCount << "\n";
                                 tileState[gridX][gridY] = bombCount;
                                 tileRevealed[gridX][gridY] = true;
+                                --tilesLeft;
                             }
                         }
                     }
@@ -236,9 +294,14 @@ int main()
                     // Get the mouse position relative to the window
                     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
-                    // Convert mouse position to grid coordinates
-                    int gridX = mousePos.x / tileSize;
-                    int gridY = mousePos.y / tileSize;
+                    // Adjust the mouse position by subtracting the offsets
+                    int adjustedX = mousePos.x - horizontalOffset;
+                    int adjustedY = mousePos.y - verticalOffset;
+
+                    // Convert adjusted mouse position to grid coordinates
+                    int gridX = adjustedX / tileSize;
+                    int gridY = adjustedY / tileSize;
+                    
                     // -6 = flag tile, -5 = bomb with flag, -4 = active bomb tile, -3 = bomb tile, -2 = bomb tile, -1 = start tile, 0 = empty tile
                     // Check if coordinates are within bounds
                     if (gridX >= 0 && gridX < gridWidth && gridY >= 0 && gridY < gridHeight && !gameOver)
@@ -254,6 +317,27 @@ int main()
                     }
                 }
             }
+            //else if (event->is<sf::Event::MouseButtonPressed>()) {
+            //    if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
+            //        sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+
+            //        // Get the button's global bounds
+            //        sf::FloatRect buttonBounds = resetButtonSprite.getGlobalBounds();
+
+            //        std::cout << "ewfwe";
+
+            //        // Check if the mouse click is within the button bounds
+            //        sf::Vector2 mouseCords((static_cast<float> (mousePos.x)), (static_cast<float> (mousePos.y)));
+            //        if (buttonBounds.contains(mouseCords))
+            //        {
+            //            std::cout << "jhhhh";
+            //            // Mouse clicked on the reset button, change the texture to the clicked version
+            //            resetButtonSprite.setTexture(resetButtonClickedTexture);
+
+            //            // Optionally, you can handle any reset game logic here, like resetting the grid
+            //        }
+            //    }
+            //}
         }
 
         //    FLAG = -6,
@@ -263,38 +347,41 @@ int main()
         //    EMPTY = 0,
         //    START = -1
 
-        window.clear();
+        window.clear(sf::Color(143, 143, 143)); // a light gray.
 
         // Draw the grid of sprites
         for (int i = 0; i < gridWidth; ++i)
         {
             for (int j = 0; j < gridHeight; ++j)
             {
+                // Apply the offsets when positioning the tiles
+                sf::Vector2f position(i * tileSize + horizontalOffset, j * tileSize + verticalOffset);
+
                 // Position each sprite in the grid
                 if (tileState[i][j] == START)  // start tile
-                    startTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    startTileSprite.setPosition(position);
                 else if (tileState[i][j] == EMPTY)  // empty tile
-                    emptyTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    emptyTileSprite.setPosition(position);
                 else if (tileState[i][j] == FLAG)  // flag tile
-                    flagTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    flagTileSprite.setPosition(position);
                 else if (tileState[i][j] == BOMB_WITH_FLAG)  // flagged bomb tile
-                    flagTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    flagTileSprite.setPosition(position);
                 else if (tileState[i][j] == BOMB) {  // bomb tile
                     if (gameOver)
-                        bombTileSprite.setPosition({ i * tileSize, j * tileSize });
+                        bombTileSprite.setPosition(position);
                     else
-                        startTileSprite.setPosition({ i * tileSize, j * tileSize });
+                        startTileSprite.setPosition(position);
                 }
                 else if (tileState[i][j] == ACTIVE_BOMB) // active bomb tile
-                    activeBombTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    activeBombTileSprite.setPosition(position);
                 else if (tileState[i][j] == 1) // 1 bomb near
-                    oneTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    oneTileSprite.setPosition(position);
                 else if (tileState[i][j] == 2) // 2 bomb near
-                    twoTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    twoTileSprite.setPosition(position);
                 else if (tileState[i][j] == 3) // 3 bomb near
-                    threeTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    threeTileSprite.setPosition(position);
                 else if (tileState[i][j] == 4) // 4 bomb near
-                    fourTileSprite.setPosition({ i * tileSize, j * tileSize });
+                    fourTileSprite.setPosition(position);
 
                 //    FLAG = -6,
                 //    BOMB_WITH_FLAG = -5,
@@ -331,6 +418,8 @@ int main()
                     window.draw(fourTileSprite);
             }
         }
+
+        window.draw(resetButtonSprite);
 
         // Update the window
         window.display();

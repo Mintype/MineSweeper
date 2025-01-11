@@ -143,6 +143,17 @@
   <ItemGroup>
     <ClCompile Include="ConsoleApplication1.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\images\active_bomb_tile.png" />
+    <Image Include="resources\images\bomb_tile.png" />
+    <Image Include="resources\images\empty_tile.png" />
+    <Image Include="resources\images\flag_tile.png" />
+    <Image Include="resources\images\four_tile.png" />
+    <Image Include="resources\images\one_tile.png" />
+    <Image Include="resources\images\start_tile.png" />
+    <Image Include="resources\images\three_tile.png" />
+    <Image Include="resources\images\two_tile.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

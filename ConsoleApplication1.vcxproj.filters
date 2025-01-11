@@ -19,4 +19,33 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\images\start_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\three_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\two_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\active_bomb_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\bomb_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\empty_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\flag_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\four_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\images\one_tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>
